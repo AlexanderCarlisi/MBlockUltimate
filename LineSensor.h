@@ -3,7 +3,7 @@
 #ifndef LINESENSOR_H
 #define LINESENSOR_H
 
-#define LINESENSOR_PORT PORT_8 // ?
+#define LINESENSOR_PORT PORT_5
 
 
 class LineSensor {
@@ -11,8 +11,11 @@ class LineSensor {
     MeLineFollower lineSensor;
 
   public:
+    const int16_t initialLineFollowSpeed = 125;
     bool onLeft = false;
     bool onRight = false;
+    int16_t lineFollowSpeed = 125;
+    bool flip = false; // Go in Reverse,
 
     /**
       Blank Constructor
