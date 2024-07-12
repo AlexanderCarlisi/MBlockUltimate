@@ -3,17 +3,19 @@
 #ifndef ULTRASONICSENSOR_H
 #define ULTRASONICSENSOR_H
 
-#define ULTRASONIC_PORT PORT_5 // ?
+#define ULTRASONIC_PORT PORT_6
 
 class UltrasonicSensor {
   private:
-    const double closestProximityCM = 3; // ~?
-    const double pickUpProximityCM = 10.5; // ~?
     MeUltrasonicSensor sensor;
 
   public:
     bool atClosest = false;
     bool atPickUp = false;
+    bool startSlow = false;
+    const double closestProximityCM = 4;
+    const double pickUpProximityCM = 10.5;
+    const double startSlowProximityCM = 15;
 
     /**
       Blank Constructor

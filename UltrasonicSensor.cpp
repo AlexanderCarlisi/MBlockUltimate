@@ -20,5 +20,6 @@ void UltrasonicSensor::checkProximity() {
     double distance = getDistanceCM();
     atClosest = distance <= closestProximityCM;
     atPickUp = distance <= pickUpProximityCM;
+    startSlow = distance <= startSlowProximityCM;
 }
 
