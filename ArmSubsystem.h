@@ -3,7 +3,7 @@
 #ifndef ARMSUBSYSTEM_H
 #define ARMSUBSYSTEM_H
 
-#define ARM_MOTOR_PORT PORT_3
+#define ARM_MOTOR_PORT PORT_11
 #define CLAW_MOTOR_PORT PORT_12
 
 class ArmSubsystem {

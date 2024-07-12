@@ -3,8 +3,8 @@
 #ifndef DRIVESUBSYSTEM_H
 #define DRIVESUBSYSTEM_H
 
-#define DRIVE_MOTOR_LEFT_PORT PORT_2
-#define DRIVE_MOTOR_RIGHT_PORT PORT_1
+#define DRIVE_MOTOR_LEFT_PORT PORT_9
+#define DRIVE_MOTOR_RIGHT_PORT PORT_10
 
 class DriveSubsystem {
   private:
