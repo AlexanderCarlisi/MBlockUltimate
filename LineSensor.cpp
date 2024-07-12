@@ -13,6 +13,6 @@ LineSensor::LineSensor() :
 
 
 void LineSensor::checkLine() {
-    onLeft = lineSensor.readSensor1() == 0;
-    onRight = lineSensor.readSensor2() == 0;
+  onLeft = lineSensor.readSensor1() == 1; // 0 detects black, 1 detects white 
+  onRight = lineSensor.readSensor2() == 1;
 }
