@@ -3,17 +3,15 @@
 #ifndef DRIVESUBSYSTEM_H
 #define DRIVESUBSYSTEM_H
 
-#define DRIVE_MOTOR_LEFT_PORT PORT_9
-#define DRIVE_MOTOR_RIGHT_PORT PORT_10
+#define DRIVE_MOTOR_LEFT_PORT PORT_10
+#define DRIVE_MOTOR_RIGHT_PORT PORT_9
 
 class DriveSubsystem {
-  private:
-    MeMegaPiDCMotor motorLeft;
-    MeMegaPiDCMotor motorRight;
-
   public:
     int16_t leftSpeed = 0;
     int16_t rightSpeed = 0;
+    MeMegaPiDCMotor motorLeft;
+    MeMegaPiDCMotor motorRight;
 
     /**
       Blank Constructor

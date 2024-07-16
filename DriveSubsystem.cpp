@@ -15,8 +15,8 @@ DriveSubsystem::DriveSubsystem() :
 
 
 void DriveSubsystem::drive() {
-  motorLeft.run(-leftSpeed); // invert left motor
-  motorRight.run(rightSpeed);
+  motorLeft.run(leftSpeed); // invert left motor
+  motorRight.run(-rightSpeed);
 }
 
 void DriveSubsystem::drive(int16_t left, int16_t right) {

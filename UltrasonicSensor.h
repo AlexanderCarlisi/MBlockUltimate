@@ -13,9 +13,9 @@ class UltrasonicSensor {
     bool atClosest = false;
     bool atPickUp = false;
     bool startSlow = false;
-    const double closestProximityCM = 4;
+    const double closestProximityCM = 5;
     const double pickUpProximityCM = 10.5;
-    const double startSlowProximityCM = 15;
+    const double startSlowProximityCM = 20;
 
     /**
       Blank Constructor
