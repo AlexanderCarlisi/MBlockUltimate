@@ -20,8 +20,8 @@ void LineSensor::checkLine() {
 
 int LineSensor::getError(bool leftSensor, bool rightSensor) {
   if (leftSensor && rightSensor) return 0;  // Both sensors on the line
-  else if (leftSensor && !rightSensor) return -1; // Left sensor on the line, right sensor off the line
-  else if (!leftSensor && rightSensor) return 1;  // Right sensor on the line, left sensor off the line
+  else if (leftSensor && !rightSensor) return 1; // Left sensor on the line, right sensor off the line | 1 because we want left subtracted when rotating left
+  else if (!leftSensor && rightSensor) return -1;  // Right sensor on the line, left sensor off the line | -1 because we want left added when rotating right
   else return 0;  // Both sensors off the line, handle separately if needed
 }
 
