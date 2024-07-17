@@ -16,7 +16,8 @@
 
 // Encoder Constants
 #define DRIVE_ENCODER_LEFT SLOT2
-#define DRIVE_ENCODER_RIGHT SLOT1
+// #define DRIVE_ENCODER_RIGHT SLOT1
+#define DRIVE_MOTOR_RIGHT PORT_9
 
 // DCMotor Constants
 #define DRIVE_MOTOR_LEFT 10
@@ -24,8 +25,7 @@
 
 // Drive Declarations
 MeEncoderOnBoard driveEncoderLeft(DRIVE_ENCODER_LEFT);
-MeEncoderOnBoard driveEncoderRight(DRIVE_ENCODER_RIGHT);
-
+MeMegaPiDCMotor driveMotorRight(DRIVE_MOTOR_RIGHT);
 
 
 ///
@@ -34,7 +34,7 @@ MeEncoderOnBoard driveEncoderRight(DRIVE_ENCODER_RIGHT);
 
 // Encoder Constants
 #define ARM_ENCODER_SLOT SLOT3
-#define ARM_TOP_POS -1000
+#define ARM_TOP_POS -1300
 #define ARM_BASE_POS 0
 
 // DCMotor Constants
@@ -61,7 +61,7 @@ MeEncoderOnBoard armEncoder(ARM_ENCODER_SLOT);
 MeUltrasonicSensor ultrasonicSensor(ULTRASONINC_PORT);
 MeLineFollower lineSensor(LINESENSOR_PORT);
 
-const int16_t lineFollowInitialSpeed = 175;
+const int16_t lineFollowInitialSpeed = 125;
 int16_t lineFollowSpeed = lineFollowInitialSpeed;
 bool doLineFollow = false;
 bool doUSSProximity = false;
@@ -79,12 +79,21 @@ uint8_t c3_clawCloseCount = 0;
 float c3_previousArmPosition = 0;
 bool c3_foundArmMidpoint = false;
 float c3_armMidpoint = 0;
-float c3_armMidpointTolerance = 50;
+float c3_armMidpointTolerance = 1;
+
+float c3_armROCTolerance = 20;
 
 // drive
 bool c3_foundDriveMidpoint = false;
 float c3_driveMidpoint = 0;
-float c3_driveMidpointTolerance = 50;
+float c3_driveMidpointTolerance = 10;
+
+
+
+///
+/// SYSTEM TEST DECLARATIONS
+///
+int16_t driveTestSpeed = 150;
 
 
 ///
@@ -99,7 +108,7 @@ void setup() {
 
   // Encoder Interrupts
   attachInterrupt(driveEncoderLeft.getIntNum(), isrProcessDriveLeft, RISING);
-  attachInterrupt(driveEncoderRight.getIntNum(), isrProcessDriveRight, RISING);
+  // attachInterrupt(driveEncoderRight.getIntNum(), isrProcessDriveRight, RISING);
   attachInterrupt(armEncoder.getIntNum(), isrProcessArm, RISING);
   Serial.println("Attached Interrupts for Encoders...");
 
@@ -107,16 +116,54 @@ void setup() {
   TCCR1A = _BV(WGM10);
   TCCR1B = _BV(CS11) | _BV(WGM12);
 
-  // Set PWM 8KHz for Timer2 (pins 9 and 10)
-  TCCR2A = _BV(WGM21) | _BV(WGM20);
-  TCCR2B = _BV(CS21);
+  // Set PWM 8KHz for Timer4 (pins 7 and 8)
+  TCCR4A = _BV(WGM40);
+  TCCR4B = _BV(CS41) | _BV(WGM42);
 
-  // Set PWM 8KHz for Timer3 (pins 2, 3, and 5 on Arduino Mega)
-  TCCR3A = _BV(WGM30);
-  TCCR3B = _BV(CS31) | _BV(WGM32);
+  // Set PWM 8KHz for Timer5 (pins 44, 45, 46) - assuming use for ARM if needed
+  TCCR5A = _BV(WGM50);
+  TCCR5B = _BV(CS51) | _BV(WGM52);
+
+  // ARM -> 42, 43, 47, 48, 49, 396
+  // LEFT MOTOR -> 36, 37, 40, 41, 38, 19, 8, 7
+  // RIGHT MOTOR -> 35, 34, 33, 32, 31, 18, 12, 11
 
   Serial.println("PWM Set to 8KHz for Encoder Motors...");
   Serial.println("... Setup Complete ...");
+
+  // Tests
+  // testDrive();
+  // bringArmToBase();
+  // testArm();
+  // closeClaw();
+  // testClaw();
+
+  // driveMotorRight.run(255);
+
+  // lowerArm(100);
+
+  // bringArmToBase();
+  // bringArmToTop();
+
+  // testClaw();
+  // openClaw();
+
+  // raiseArm(100);
+  // scheduler.every(1000, []() -> bool {
+  //   armEncoder.updateCurPos();
+  //   Serial.println(armEncoder.getCurPos());
+  //   return true;
+  // });
+
+  Challenge3();
+
+  // doLineFollow = true;
+  // scheduler.every(50, followLine);
+  // scheduler.every(1000, []() -> bool {
+  //   Serial.println("LEFT : " + String(lineOnLeft()));
+  //   Serial.println("RIGHT : " + String(lineOnRight()));
+  //   return true;
+  // });
 }
 
 
@@ -139,13 +186,13 @@ void isrProcessDriveLeft() {
     }
 }
 
-void isrProcessDriveRight() {
-    if (digitalRead(driveEncoderRight.getPortB()) == 0) {
-        driveEncoderRight.pulsePosMinus();
-    } else {
-        driveEncoderRight.pulsePosPlus();
-    }
-}
+// void isrProcessDriveRight() {
+//     if (digitalRead(driveEncoderRight.getPortB()) == 0) {
+//         driveEncoderRight.pulsePosMinus();
+//     } else {
+//         driveEncoderRight.pulsePosPlus();
+//     }
+// }
 
 void isrProcessArm() {
     if (digitalRead(armEncoder.getPortB()) == 0) {
@@ -166,11 +213,10 @@ void drive(int16_t leftSpeed, int16_t rightSpeed) {
   constrain(leftSpeed, -255, 255);
   constrain(rightSpeed, -255, 255);
 
-  driveEncoderLeft.setMotorPwm(leftSpeed);
+  driveEncoderLeft.setMotorPwm(-leftSpeed);
   driveEncoderLeft.updateSpeed();
 
-  driveEncoderRight.setCurrentSpeed(rightSpeed);
-  driveEncoderRight.updateSpeed();
+  driveMotorRight.run(-rightSpeed);
 }
 
 // ARM
@@ -234,6 +280,7 @@ bool armAtBase() {
  */
 void raiseArmTillROCStops() {
   c3_foundArmMidpoint = false;
+  raiseArm(255);
 
   scheduler.in(500, []() -> void { // Give time for ROC to start
     scheduler.every(10, []() -> bool {
@@ -241,15 +288,46 @@ void raiseArmTillROCStops() {
       armEncoder.updateCurPos();
       float currentPos = armEncoder.getCurPos();
 
+      Serial.println("RAISE ARM : " + String(currentPos - c3_previousArmPosition));
+
       // When ROC is 0 end Loop and set MidPoint Position
       if (currentPos - c3_previousArmPosition == 0) {
         c3_foundArmMidpoint = true;
         c3_armMidpoint = currentPos / 2;
+        raiseArm(0);
+        Serial.println("RAISE ARM STOP...");
       }
 
       // Update Previous Position
       c3_previousArmPosition = currentPos;
-      return c3_foundArmMidpoint; // loop?
+      return !c3_foundArmMidpoint; // loop?
+    });
+  });
+}
+
+/**
+  Raises the Arm until the Positional Rate of Change is 0.
+ */
+void lowerArmTillROCStops() {
+  lowerArm(255);
+  scheduler.in(500, []() -> void { // Give time for ROC to start
+    scheduler.every(10, []() -> bool {
+      // Get Current Pos
+      armEncoder.updateCurPos();
+      float currentPos = armEncoder.getCurPos();
+
+      Serial.println("LOWER ARM : " + String(currentPos - c3_previousArmPosition));
+
+      // When ROC is 0 end Loop and set MidPoint Position
+      if (currentPos - c3_previousArmPosition == 0) {
+        lowerArm(0);
+        Serial.println("LOWER ARM STOP...");
+        return false; // stop looping
+      }
+
+      c3_previousArmPosition = currentPos;
+
+      return true; // continue looping
     });
   });
 }
@@ -257,14 +335,14 @@ void raiseArmTillROCStops() {
 
 // CLAW
 void openClaw() {
-  clawMotor.run(255);
+  clawMotor.run(-255);
   scheduler.in(2000, []() -> void {
     clawMotor.stop();
   });
 }
 
 void closeClaw() {
-  clawMotor.run(-255);
+  clawMotor.run(255);
   scheduler.in(2000, []() -> void {
     clawMotor.stop();
   });
@@ -284,53 +362,62 @@ bool followLine() {
   int16_t leftSpeed = lineFollowSpeed;
   int16_t rightSpeed = lineFollowSpeed;
 
-  bool reverse = !lineOnLeft() && !lineOnRight();
+  bool onLeft = lineOnLeft();
+  bool onRight = lineOnRight();
 
-  // Both on Line, Drive Forward
-  if (lineOnLeft() && lineOnRight()) {
-    drive(leftSpeed, rightSpeed);
+	// Both Within Line
+	if (onLeft && onRight) {
+		leftSpeed *= 1;
+    rightSpeed *= 1;
 
-    // Not on Left, On Right = Turn Right
-  } else if (!lineOnLeft() && lineOnRight()) {
-    drive(leftSpeed, rightSpeed * -0.25);
+	} else if (onLeft && !onRight) {
+		rightSpeed *= 1;
+    leftSpeed *= -0.75; // Flip Forward Direction
 
-    // On left, not on right = Turn Left
-  } else if (lineOnLeft() && !lineOnRight()) {
-    drive(leftSpeed * -0.25, rightSpeed);
+	// Left out, Right in : Turn Right
+	} else if (!onLeft && onRight) {
+		leftSpeed *= 1;
+    rightSpeed *= -0.75; // Flip Forward Direction
 
-  } else if (reverse) {
-    leftSpeed *= -0.33;
-    rightSpeed *= -0.33;
-  }
+	// Both Out of Line : Stop and End Task
+	} else {
+		leftSpeed *= -0.5;
+    rightSpeed *= -0.5;
+	}
+
+  drive(leftSpeed, rightSpeed);
 
   return doLineFollow;
 }
 
-/**
-  For C3 when moving to midpoint, go in reverse.
- */
 bool followLineINVERTED() {
   int16_t leftSpeed = -lineFollowSpeed;
   int16_t rightSpeed = -lineFollowSpeed;
 
-  bool reverse = !lineOnLeft() && !lineOnRight();
+  bool onLeft = lineOnLeft();
+  bool onRight = lineOnRight();
 
-  // Both on Line, Drive Forward
-  if (lineOnLeft() && lineOnRight()) {
-    drive(leftSpeed, rightSpeed);
+	// Both Within Line
+	if (onLeft && onRight) {
+		leftSpeed *= 1;
+    rightSpeed *= 1;
 
-    // Not on Left, On Right = Turn Right
-  } else if (!lineOnLeft() && lineOnRight()) {
-    drive(leftSpeed * -0.25, rightSpeed);
+	} else if (onLeft && !onRight) {
+		rightSpeed *= 1;
+    leftSpeed *= -0.75; // Flip Forward Direction
 
-    // On left, not on right = Turn Left
-  } else if (lineOnLeft() && !lineOnRight()) {
-    drive(leftSpeed, rightSpeed * -0.25);
+	// Left out, Right in : Turn Right
+	} else if (!onLeft && onRight) {
+		leftSpeed *= 1;
+    rightSpeed *= -0.75; // Flip Forward Direction
 
-  } else if (reverse) {
-    leftSpeed *= -0.33;
-    rightSpeed *= -0.33;
-  }
+	// Both Out of Line : Stop and End Task
+	} else {
+		leftSpeed *= -0.5;
+    rightSpeed *= -0.5;
+	}
+
+  drive(leftSpeed, rightSpeed);
 
   return doLineFollow;
 }
@@ -358,12 +445,101 @@ bool stopAtClosestProximity() {
 
 ///
 /// SYSTEM TESTS
-/// These Functions only need to be put in the Loop for testing.
+/// Call these Functions once at Setup.
+/// Ensure these functions are the only Code being run, no interference.
+/// Take these tests one thing at a time.
 ///
 
-// void testDrive() {
+void testDrive() {
+  scheduler.every(5000, []() -> bool {
+    Serial.println("Drive Forward...");
+    drive(driveTestSpeed, driveTestSpeed); // Forward
 
-// }
+    scheduler.in(1000, []() -> void {
+      Serial.println("Drive Backwards...");
+      drive(-driveTestSpeed, -driveTestSpeed); // Reverse
+    });
+
+    scheduler.in(2000, []() -> void {
+      Serial.println("Rotate Left");
+      drive(-driveTestSpeed / 2, driveTestSpeed); // Rotate Left
+    });
+
+    scheduler.in(3000, []() -> void {
+      Serial.println("Rotate Right");
+      drive(driveTestSpeed, -driveTestSpeed / 2); // Rotate Right
+    });
+
+    scheduler.in(4000, []() -> void {
+      Serial.println("Stop Driving");
+      drive(0, 0); // Stop
+    });
+
+    return true; // Continue Looping
+  });
+}
+
+void testArm() {
+  // bringArmToTop();
+  // scheduler.every(1000, []() -> bool {
+  //   if (!armAtTop()) return true; // keep looping
+  //   Serial.println("bringArmToTop() Finished...");
+
+  //   scheduler.in(1000, []() -> void {
+  //     bringArmToBase();
+
+  //     scheduler.every(1000, []() -> bool {
+  //       if (!armAtBase()) return true;
+
+  //       Serial.println("bringArmToBase() Finished...");
+  //       raiseArmTillROCStops();
+
+  //       scheduler.every(1000, []() -> bool {
+  //         if (!c3_foundArmMidpoint) return true;
+
+  //         Serial.println("raiseArmTillROCStops Finished...");
+  //         Serial.println("... testArm Finished ...");
+  //         return false;
+  //       });
+
+  //       return false;
+  //     });
+  //   });
+
+  //   return false;
+  // });
+
+  // // Loop Test
+  // scheduler.every(10000, []() -> bool {
+  //   Serial.println("STARTING RAISE ARM ROC...");
+  //   raiseArmTillROCStops();
+
+  //   scheduler.in(5000, []() -> void {
+  //     Serial.println("STARTING LOWER ARM ROC...");
+  //     lowerArmTillROCStops();
+  //   });
+  // });
+
+  scheduler.every(10000, []() -> bool {
+    bringArmToTop();
+    scheduler.in(5000, bringArmToBase);
+    return true;
+  });
+}
+
+void testClaw() {
+  scheduler.every(5000, []() -> bool {
+    Serial.println("CLOSING CLAW...");
+    closeClaw();
+
+    scheduler.in(2500, []() -> bool {
+      Serial.println("OPENING CLAW...");
+      openClaw();
+    });
+
+    return true;
+  });
+}
 
 
 
@@ -474,105 +650,128 @@ void challenge2() {
     - Find Midpoint of the line, and stop there.
     - Open and Close the Claw 5 times??? Assumes claw starts open.
  */
+bool finishedClaw = false;
+bool finishedArm = false;
 void Challenge3() {
 
-  // Open and Close Claw 5 times
-  scheduler.every(3000, []() -> bool {
-    // Close Claw
-    if (c3_clawCloseCount < c3_clawOpenCount) {
-      closeClaw();
-      c3_clawCloseCount++;
+  scheduler.in(3000, []() -> void {
+    // Open and Close Claw 5 times
+    scheduler.every(3000, []() -> bool {
+      // Close Claw
+      if (c3_clawCloseCount < c3_clawOpenCount) {
+        closeClaw();
+        c3_clawCloseCount++;
 
-      // Open Claw
-    } else if (c3_clawOpenCount < c3_clawCloseCount) {
-      openClaw();
-      c3_clawOpenCount++;
+        // Open Claw
+      } else if (c3_clawOpenCount < c3_clawCloseCount) {
+        openClaw();
+        c3_clawOpenCount++;
 
-      // if they're equal, CLOSE
-    } else if (c3_clawOpenCount != 5 && c3_clawCloseCount != 5) {
-      closeClaw();
-      c3_clawCloseCount++;
-    }
-
-    return c3_clawOpenCount == 5 && c3_clawCloseCount == 5;
-  });
-
-  // Find Midpoint of the Arm, then stop there.
-  raiseArmTillROCStops();
-  scheduler.every(1000, []() -> bool {
-    if (!c3_foundArmMidpoint) return true; // loop till found
-
-    Serial.println("FOUND ARM MIDPOINT...");
-
-    scheduler.every(10, []() -> bool {
-      // Maths
-      armEncoder.updateCurPos();
-      float currentPos = abs(armEncoder.getCurPos());
-      float midpoint = abs(c3_armMidpoint);
-      float min = midpoint - c3_armMidpointTolerance;
-      float max = midpoint + c3_armMidpointTolerance;
-
-      // Check if Arm is within Midpoint Tolerance
-      if (currentPos >= min && currentPos <= max) {
-        Serial.println("... AT ARM MIDPOINT...");
-        lowerArm(0); // Stop
-        return false;
-      
-      // Too low, go up (inverted)
-      } else if (armEncoder.getCurPos() > c3_armMidpoint) {
-        raiseArm(100);
+        // if they're equal, CLOSE
+      } else if (c3_clawOpenCount != 5 && c3_clawCloseCount != 5) {
+        closeClaw();
+        c3_clawCloseCount++;
       }
 
-      // Too high, go low (inverted)
-      else if (armEncoder.getCurPos() < c3_armMidpoint) {
-        lowerArm(100);
-      }
-
-      return true;
+      finishedClaw = c3_clawOpenCount == 5 && c3_clawCloseCount == 5;
+      return !(c3_clawOpenCount == 5 && c3_clawCloseCount == 5);
     });
 
-    return false; // Stop Loop
-  });
+    scheduler.every(1000, []() -> bool {
+      if (!finishedClaw) return true;
+      // Find Midpoint of the Arm, then stop there.
+      bringArmToTop();
+      scheduler.every(1000, []() -> bool {
+        if (!armAtTop()) return true; // loop till found
 
-  // Find midpoint of the line, then stop there.
-  doLineFollow = true;
-  scheduler.every(50, followLine);
+        Serial.println("FOUND ARM MIDPOINT...");
+        armEncoder.updateCurPos();
+        c3_armMidpoint = 650;
 
-  // Check
-  scheduler.every(300, []() -> bool {
-    // doLineFollow, until completely off the line.
-    doLineFollow = lineOnLeft || lineOnRight;
+        scheduler.every(10, []() -> bool {
+          // Maths
+          armEncoder.updateCurPos();
+          float currentPos = abs(armEncoder.getCurPos());
+          float midpoint = abs(c3_armMidpoint);
+          float min = midpoint - c3_armMidpointTolerance;
+          float max = midpoint + c3_armMidpointTolerance;
 
-    if (!doLineFollow) {
-      driveEncoderLeft.updateCurPos();
-      c3_driveMidpoint = driveEncoderLeft.getCurPos() / 2;
+          // Check if Arm is within Midpoint Tolerance
+          if (currentPos >= min && currentPos <= max) {
+            Serial.println("... AT ARM MIDPOINT...");
+            Serial.println("MIDPOINT = " + String(currentPos));
+            lowerArm(0); // Stop
+            finishedArm = true;
+            return false;
+          
+          // Too low, go up (inverted)
+          } else if (armEncoder.getCurPos() > c3_armMidpoint) {
+            raiseArm(100);
+          }
 
-      Serial.println("FOUND DRIVE MIDPOINT...");
+          // Too high, go low (inverted)
+          else if (armEncoder.getCurPos() < c3_armMidpoint) {
+            lowerArm(100);
+          }
 
-      doLineFollow = true;
-      scheduler.every(50, followLineINVERTED);
-      // Drive Reverse Followline until at Midpoint
-      scheduler.every(300, []() -> bool {
-        float currentPos = abs(armEncoder.getCurPos());
-        float midpoint = abs(c3_driveMidpoint);
-        float min = midpoint - c3_driveMidpointTolerance;
-        float max = midpoint + c3_driveMidpointTolerance;
+          return true;
+        });
 
-        // Check if Arm is within Midpoint Tolerance
-        if (currentPos >= min && currentPos <= max) {
-          doLineFollow = false;
-          drive(0, 0);
-          Serial.println("... AT DRIVE MIDPOINT ...");
-          return false; // Stop and DONE!
-        }
-
-        return true; // Keep looping
+        return false; // Stop Loop
       });
 
-      return false; // Stop loop
-    }
+      return false;
+    });
 
-    return true; // keep checking
+    scheduler.every(1000, []() -> bool {
+      if (!finishedArm) return true;
+
+      // Find midpoint of the line, then stop there.
+      doLineFollow = true;
+      scheduler.every(50, followLine);
+
+      Serial.println("STARTING LINE DRIVE...");
+
+      // Check
+      scheduler.every(300, []() -> bool {
+        // doLineFollow, until completely off the line.
+        doLineFollow = lineOnLeft() || lineOnRight();
+
+        if (!doLineFollow) {
+          driveEncoderLeft.updateCurPos();
+          c3_driveMidpoint = driveEncoderLeft.getCurPos() / 2;
+
+          Serial.println("INVERTING DRIVE...");
+
+          doLineFollow = true;
+          scheduler.every(50, followLineINVERTED);
+          // Drive Reverse Followline until at Midpoint
+          scheduler.every(300, []() -> bool {
+            float currentPos = abs(armEncoder.getCurPos());
+            float midpoint = abs(c3_driveMidpoint);
+            float min = midpoint - c3_driveMidpointTolerance;
+            float max = midpoint + c3_driveMidpointTolerance;
+
+            // Check if Arm is within Midpoint Tolerance
+            if (currentPos >= min && currentPos <= max) {
+              doLineFollow = false;
+              drive(0, 0);
+              Serial.println("... AT DRIVE MIDPOINT ...");
+              return false; // Stop and DONE!
+            }
+
+            return true; // Keep looping
+          });
+
+          return false; // Stop loop
+        }
+
+        return true; // keep checking
+      });
+
+      return false;
+    });
+
   });
 }
 
